@@ -1,29 +1,46 @@
-# VM-Series for Microsoft Azure
+# VM-Series in an Availability Set Template
 
-This is a repository for Azure Resoure Manager (ARM) templates to deploy VM-Series Next-Generation firewall from Palo Alto Networks in to the Azure public cloud.
+This ARM template deploys a VM-Series next generation firewall VM in an availability set of a Azure resource group. It lets you select your:
+- Username and Password, or SSH key
+- Resource Group and Storage Account inside it
+- VNET's CIDR (/16 range) with 3 subnets: Mgmt (0.0/24), Untrust (1.0/24), Trust (2.0/24)
+- Azure VM size and login for VM-Series (BYOL edition) with 3 NIC's that map to above subnets
+- Specify PAN-OS version and VM-Series model: BYOL, hourly pay-as-you-go (PAYG)Bundle 1 or Bundle 2
+- Specify the Azure Availability Set (required parameter)
 
-[VM-Series in Azure Marketplace](https://azuremarketplace.microsoft.com/en-us/marketplace/apps/paloaltonetworks.vmseries-ngfw?tab=Overview):
+Note: Make sure to set a strong password for the firewall and set the SRCIPINBOUNDNSG to your source IP, i.e. restrict which IP (yours) can connect to your Azure deployment. If you keep it 0.0.0.0/0 then anyone can connect (or brute force) your VM's. 
 
-- Bring Your Own License - [BYOL](https://azure.microsoft.com/en-us/marketplace/partners/paloaltonetworks/vmseries-ngfwbyol/)
-- Pay-As-You-Go (PAYG) Hourly [Bundle 1](https://azure.microsoft.com/en-us/marketplace/partners/paloaltonetworks/vmseries-ngfwbundle1/) and [Bundle 2](https://azure.microsoft.com/en-us/marketplace/partners/paloaltonetworks/vmseries-ngfwbundle2/)
+This template is meant to let you do customized deployments of VM-Series instead of deploying from the Azure Marketplace. You can deploy using the "Deploy to Azure" button below or download the template and customize it to your needs. You can also fork the templates into your own GitHub repository.
 
-**Documentation**
+[<img src="http://azuredeploy.net/deploybutton.png"/>](https://portal.azure.com/#create/Microsoft.Template/uri/https%3A%2F%2Fraw.githubusercontent.com%2FPaloAltoNetworks%2Fazure%2Fmaster%2Fvmseries-avset%2FazureDeploy.json)
+[<img src="https://camo.githubusercontent.com/536ab4f9bc823c2e0ce72fb610aafda57d8c6c12/687474703a2f2f61726d76697a2e696f2f76697375616c697a65627574746f6e2e706e67" data-canonical-src="http://armviz.io/visualizebutton.png" style="max-width:100%;">](http://armviz.io/#/?load=https%3A%2F%2Fraw.githubusercontent.com%2FPaloAltoNetworks%2Fazure%2Fmaster%2Fvmseries-avset%2FazureDeploy.json)
 
-- [Technical documentation](https://www.paloaltonetworks.com/documentation/80/virtualization/virtualization/set-up-the-vm-series-firewall-on-azure)
-- [VM-Series Datasheet PDF](https://www.paloaltonetworks.com/content/dam/pan/en_US/assets/pdf/datasheets/vm-series/vm-series-for-microsoft-azure.pdf)
-- [Deploying ARM Templates](https://azure.microsoft.com/en-us/documentation/articles/resource-group-template-deploy/#deploy-with-azure-cli)
 
-**NOTE:**
-- Deploying ARM templates requires some expertise and customization of the ARM JSON template. Please review the basic structure of ARM templates.
-- Most of the templates in this repository typically use the BYOL version of VM-Series. If you want to use a different SKU then you can edit the azureDeploy.json template to set the `"imageSku"` variable to use `"byol"`, `"bundle1"` or `"bundle2"`:
-```javascript
-"imagePublisher": "paloaltonetworks",
-"imageSku":       "byol",
-"imageOffer" :    "vmseries1",
-"imageVersion":   "latest"
+## Deploy ARM Template using Azure CLI in ARM mode
+
+1. Download the two JSON files: azureDeploy.json and azureDeploy.parameters.json
+1. Customize the azureDeploy.parameters.json file and then deploy it from your computer.
+1. Install the latest <a href="https://azure.microsoft.com/en-us/documentation/articles/xplat-cli-install/">Azure CLI</a> for your computer.</li>
+1. Validate and deploy the ARM template:
+
+``` azure
+    azure login
+    azure config mode arm
+    azure  group  template  validate  -g YourResourceGroupName \
+        -e  azureDeploy.json   -f  azureDeploy.parameters.json
+    azure group create -v -n YourResourceGroupName -l YourAzureRegion  \
+        -d  YourDeploymentLabel  -f azureDeploy.json -e azureDeploy.parameters.json
 ```
-- By default, if `"imageVersion"` is not specified then the latest PAN-OS version available in Azure Marketplace is used (equivalent to writing `"imageVersion": "latest"`). To use a specific PAN-OS version available in the Azure Marketplace, set it as `"imageVersion": "8.0.0"` or `"imageVersion": "7.1.1"`. For an example on setting the PAN-OS version see the following template: https://github.com/PaloAltoNetworks/azure/tree/master/vmseries-avset
 
-- Before you use the custom ARM templates here, you must first deploy the related VM from the Azure Marketplace into the intended/destination Azure location. This enables programmatic access (i.e. template-based deployment) to deploy the VM from Azure Marketplace. You can then delete the Marketplace-based deployment if you don't need it.
-- For example, if you plan to use a custom ARM template to deploy a BYOL VM of VM-Series into Australia-East, then first deploy the BYOL VM from Marketplace into Australia. This is needed only the first time. You can then delete this VM and its related resources. Now your ARM templates, from GitHub or via CLI, will work.
-- The older Marketplace listing [VM-Series (BYOL) Solution Template](https://azure.microsoft.com/en-us/marketplace/partners/paloaltonetworks/vmseriesbyol-template2template2-3nic-3subnetbyol/) is deprecated; please do not use this template. Use the above listings in the Marketplace.
+**Check the status of your deployment:**
+
+- CLI: `azure vm show  -g YourResourceGroupName  -n YourDeploymentLabel`
+- Azure Portal: Your Resource Group > Deployment or Alert Logs
+
+
+If you are creating customized ARM templates you can use the following information to deploy VM-Series:
+
+- Publisher name: paloaltonetworks
+- Offer: vmseries1
+- SKU: byol or bundle1 or bundle2
+- Version: 8.0.0, 7.1.1 or latest (recommended)
